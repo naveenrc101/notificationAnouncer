@@ -6,9 +6,12 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
+import android.media.AudioManager
+import android.media.ToneGenerator
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -17,22 +20,24 @@ import android.os.Looper
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
+import android.util.Log
 import androidx.core.app.ServiceCompat
+import java.util.Locale
 
-/**
- * Started explicitly from the visible activity so microphone access remains
- * eligible when the user leaves the app. It records only during command windows.
- * All service, recognizer and callback state is confined to the main thread.
- */
+/** User-enabled microphone foreground service. All session state stays on the main thread. */
 class VoiceCommandService : Service() {
     private val handler = Handler(Looper.getMainLooper())
+    private val callbacks = Handler(Looper.getMainLooper())
     private var recognizer: SpeechRecognizer? = null
     private var completion: ((Boolean) -> Unit)? = null
     private var generation = 0
     private var ready = false
     private var captureEnded = false
+    private var readyTone: ToneGenerator? = null
+    val isListening: Boolean get() = completion != null
 
     companion object {
+        private const val TAG = "VoiceCommands"
         private const val CHANNEL = "voice_commands"
         private const val NOTIFICATION_ID = 1001
         private const val ACTION_STOP = "com.example.notificationannouncer.STOP_VOICE"
@@ -40,38 +45,64 @@ class VoiceCommandService : Service() {
             private set
         var status = "Voice commands are off."
             private set
+        var lastResult = ""
+            private set
+
+        fun wanted(context: Context): Boolean {
+            // Existing installations already granted this feature microphone
+            // permission before the preference existed. Preserve that opt-in.
+            val previouslyGranted = context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) ==
+                PackageManager.PERMISSION_GRANTED
+            return context.getSharedPreferences("voice_mode", Context.MODE_PRIVATE)
+                .getBoolean("enabled", previouslyGranted)
+        }
+
+        fun setWanted(context: Context, enabled: Boolean) {
+            context.getSharedPreferences("voice_mode", Context.MODE_PRIVATE)
+                .edit().putBoolean("enabled", enabled).apply()
+        }
+
+        fun reportNotRunning() {
+            lastResult = "No microphone window: open the app and enable voice commands."
+            status = lastResult
+            Log.w(TAG, "Announcement completed while voice mode was not running")
+        }
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_STOP) {
+            setWanted(this, false)
             if (instance === this) instance = null
-            finish(false)
+            finish(false, "Voice commands stopped.")
             stopSelf()
             return START_NOT_STICKY
         }
+        if (instance === this) return START_NOT_STICKY
         if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             status = "Microphone permission is needed. Enable voice commands again."
             stopSelf()
             return START_NOT_STICKY
         }
         if (!SpeechRecognizer.isRecognitionAvailable(this)) {
-            status = "No speech recognition service is available on this device."
+            status = "No system speech recognizer. Enable or update your speech recognition app."
             stopSelf()
             return START_NOT_STICKY
         }
-        val manager = getSystemService(NotificationManager::class.java)
-        manager.createNotificationChannel(NotificationChannel(
-            CHANNEL, "Voice commands", NotificationManager.IMPORTANCE_LOW))
+        getSystemService(NotificationManager::class.java).createNotificationChannel(
+            NotificationChannel(CHANNEL, "Voice commands", NotificationManager.IMPORTANCE_LOW))
         try {
+            status = "Enabled. Wait for the beep, then say read it."
             ServiceCompat.startForeground(this, NOTIFICATION_ID, notification(),
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
                     ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE else 0)
             instance = this
-            status = "Enabled. Say â€œread itâ€ within two seconds after an announcement."
+            setWanted(this, true)
+            Log.i(TAG, "Microphone foreground mode started")
         } catch (error: RuntimeException) {
-            status = "Could not enable microphone mode. Open the app and try again."
+            status = "Could not enable microphone mode. Keep the app open and try again."
+            Log.e(TAG, "Foreground mode could not start", error)
             stopSelf()
         }
         return START_NOT_STICKY
@@ -85,9 +116,11 @@ class VoiceCommandService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         return Notification.Builder(this, CHANNEL)
             .setSmallIcon(R.drawable.ic_mic)
-            .setContentTitle("Voice commands enabled")
-            .setContentText("Listens for two seconds after each announcement.")
+            .setContentTitle("Voice commands")
+            .setContentText(status)
+            .setStyle(Notification.BigTextStyle().bigText(status))
             .setContentIntent(open)
+            .setOnlyAlertOnce(true)
             .setOngoing(true)
             .setCategory(Notification.CATEGORY_SERVICE)
             .setVisibility(Notification.VISIBILITY_PUBLIC)
@@ -95,14 +128,24 @@ class VoiceCommandService : Service() {
             .build()
     }
 
+    private fun showStatus(value: String) {
+        status = value
+        if (instance === this && (Build.VERSION.SDK_INT < 33 ||
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED)) {
+            runCatching { getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, notification()) }
+        }
+    }
+
     fun listenForReadIt(onComplete: (Boolean) -> Unit) {
         if (instance !== this || completion != null) {
-            handler.post { onComplete(false) }
+            lastResult = "Microphone test skipped: voice mode is off or another message is being handled."
+            callbacks.post { onComplete(false) }
             return
         }
         if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-            status = "Microphone permission was removed. Enable voice commands again."
-            handler.post { onComplete(false) }
+            lastResult = "Microphone permission was removed. Enable voice commands again."
+            showStatus(lastResult)
+            callbacks.post { onComplete(false) }
             stopSelf()
             return
         }
@@ -110,42 +153,54 @@ class VoiceCommandService : Service() {
         ready = false
         captureEnded = false
         val session = ++generation
-        status = "Preparing the microphoneâ€¦"
+        showStatus("Preparing microphone. Wait for the beep.")
+        Log.i(TAG, "Starting recognition session " + session)
         try {
-            recognizer = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
-                SpeechRecognizer.isOnDeviceRecognitionAvailable(this)) {
-                SpeechRecognizer.createOnDeviceSpeechRecognizer(this)
-            } else {
-                SpeechRecognizer.createSpeechRecognizer(this)
-            }
+            // Let the configured system recognizer select an available engine.
+            // On-device service availability does NOT imply an en-IN model exists.
+            recognizer = SpeechRecognizer.createSpeechRecognizer(this)
             recognizer?.setRecognitionListener(object : RecognitionListener {
                 override fun onReadyForSpeech(params: Bundle?) {
                     if (session != generation || ready) return
                     ready = true
                     handler.removeCallbacksAndMessages(null)
-                    status = "Listening for â€œread itâ€â€¦"
-                    // A timer enforces the capture window; recognizer silence
-                    // extras are only hints and can be ignored by providers.
+                    showStatus("Listening now: say read it within two seconds.")
+                    Log.i(TAG, "Microphone ready for session " + session)
+                    runCatching {
+                        readyTone = ToneGenerator(AudioManager.STREAM_MUSIC, 60)
+                        readyTone?.startTone(ToneGenerator.TONE_PROP_BEEP, 80)
+                    }
+                    handler.postDelayed({ readyTone?.release(); readyTone = null }, 100)
                     handler.postDelayed({
                         if (session == generation) endCapture(session)
                     }, ReadCommand.LISTEN_MILLIS)
                 }
                 override fun onResults(results: Bundle?) {
                     if (session != generation) return
-                    val best = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                        ?.firstOrNull()
-                    finish(ready && ReadCommand.matches(best))
+                    val best = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull()
+                    val matched = ReadCommand.matches(best)
+                    // A final result is valid even if a provider omitted onReady.
+                    // Generation prevents accepting results from cancelled sessions.
+                    finish(matched, if (matched) "Recognized read it."
+                        else "Did not recognize read it. Try Test microphone and speak after the beep.")
                 }
                 override fun onError(error: Int) {
                     if (session != generation) return
+                    Log.w(TAG, "Recognition failed: " + error)
                     val detail = when (error) {
-                        SpeechRecognizer.ERROR_NO_MATCH, SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> null
+                        SpeechRecognizer.ERROR_NO_MATCH, SpeechRecognizer.ERROR_SPEECH_TIMEOUT ->
+                            "No command heard. Say read it after the beep."
                         SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS ->
-                            "Microphone access denied. Check the app permission and microphone privacy switch."
+                            "Microphone denied. Check app permission, the microphone privacy switch and speech app permissions."
                         SpeechRecognizer.ERROR_RECOGNIZER_BUSY ->
-                            "Microphone or speech recognizer is busy. Will retry after the next announcement."
-                        else -> "Speech recognition failed (code " + error +
-                            "). Check speech recognition language/downloads and connectivity."
+                            "Speech recognition is busy. Close other microphone apps and try Test microphone."
+                        SpeechRecognizer.ERROR_LANGUAGE_NOT_SUPPORTED, SpeechRecognizer.ERROR_LANGUAGE_UNAVAILABLE ->
+                            "English speech recognition is unavailable. Enable English in your system speech recognition settings."
+                        SpeechRecognizer.ERROR_NETWORK, SpeechRecognizer.ERROR_NETWORK_TIMEOUT ->
+                            "Speech recognition needs a connection or an installed offline English model."
+                        SpeechRecognizer.ERROR_AUDIO ->
+                            "Could not record audio. Check the microphone privacy switch and other microphone apps."
+                        else -> "Speech recognition failed (code " + error + "). Try Test microphone."
                     }
                     finish(false, detail)
                 }
@@ -153,52 +208,65 @@ class VoiceCommandService : Service() {
                 override fun onRmsChanged(rmsdB: Float) {}
                 override fun onBufferReceived(buffer: ByteArray?) {}
                 override fun onEndOfSpeech() {
-                    if (session != generation) return
+                    if (session != generation || captureEnded) return
                     captureEnded = true
-                    // Providers may finish early. Bound the wait for their final result.
-                    handler.removeCallbacksAndMessages(null)
-                    handler.postDelayed({
-                        if (session == generation) finish(false)
-                    }, ReadCommand.RESULT_TIMEOUT_MILLIS)
+                    waitForResults(session)
                 }
                 override fun onPartialResults(partialResults: Bundle?) {}
                 override fun onEvent(eventType: Int, params: Bundle?) {}
             })
             handler.postDelayed({
-                if (session == generation) finish(false, "Speech recognizer did not become ready.")
+                if (session == generation) finish(false,
+                    "Speech recognizer did not become ready. Check the system speech app and try Test microphone.")
             }, ReadCommand.STARTUP_TIMEOUT_MILLIS)
             recognizer?.startListening(Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE, "en-IN")
+                // Do not pin every Pixel to en-IN; use its configured English
+                // locale, or English (US) when the device language is not English.
+                val locale = Locale.getDefault()
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE,
+                    if (locale.language == "en") locale.toLanguageTag() else "en-US")
                 putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
                 putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, false)
-                putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
+                // Do not force offline-only recognition: missing local models
+                // must not prevent the provider from using its normal engine.
             })
         } catch (error: RuntimeException) {
-            finish(false, "Could not open speech recognition. Check microphone and speech settings.")
+            Log.e(TAG, "Could not start recognition", error)
+            finish(false, "Could not open speech recognition. Check microphone and system speech settings.")
         }
+    }
+
+    private fun waitForResults(session: Int) {
+        handler.removeCallbacksAndMessages(null)
+        readyTone?.release()
+        readyTone = null
+        showStatus("Microphone closed. Checking the command...")
+        handler.postDelayed({
+            if (session == generation) finish(false,
+                "Speech recognition timed out after recording. Check connectivity and try Test microphone.")
+        }, ReadCommand.RESULT_TIMEOUT_MILLIS)
     }
 
     private fun endCapture(session: Int) {
         if (captureEnded) return
         captureEnded = true
-        status = "Checking the voice commandâ€¦"
+        // Arm the result timeout before stopListening, so synchronous provider
+        // callbacks cannot be overwritten by a stale timer.
+        waitForResults(session)
         try {
             recognizer?.stopListening()
-            handler.postDelayed({
-                if (session == generation) finish(false)
-            }, ReadCommand.RESULT_TIMEOUT_MILLIS)
         } catch (error: RuntimeException) {
             finish(false, "Speech recognition could not finish.")
         }
     }
 
     fun cancelListening() {
-        finish(false)
+        if (completion != null) finish(false, "Listening cancelled.")
     }
 
-    private fun finish(read: Boolean, detail: String? = null) {
-        ++generation // Invalidate callbacks from the old recognizer before destroying it.
+    private fun finish(read: Boolean, detail: String) {
+        ++generation
         handler.removeCallbacksAndMessages(null)
         val callback = completion
         completion = null
@@ -206,20 +274,27 @@ class VoiceCommandService : Service() {
         recognizer = null
         runCatching { oldRecognizer?.cancel() }
         runCatching { oldRecognizer?.destroy() }
-        status = detail ?: if (instance === this)
-            "Enabled. Say â€œread itâ€ within two seconds after an announcement."
-            else "Voice commands are off."
-        // Return asynchronously so the microphone has been closed before TTS resumes.
-        if (callback != null) handler.post { callback(read) }
+        readyTone?.release()
+        readyTone = null
+        lastResult = detail
+        showStatus(if (instance === this) "Enabled. " + detail else "Voice commands are off.")
+        Log.i(TAG, "Recognition ended; read command=" + read)
+        if (callback != null) callbacks.post { callback(read && instance === this) }
     }
 
     override fun onDestroy() {
         if (instance === this) instance = null
-        val previousStatus = status
-        finish(false)
-        if (previousStatus.startsWith("Could not") || previousStatus.startsWith("No speech") ||
-            previousStatus.startsWith("Microphone permission")) status = previousStatus
+        if (completion != null) finish(false, "Voice mode stopped during listening. Reopen the app to restart.")
+        else {
+            runCatching { recognizer?.destroy() }
+            recognizer = null
+            readyTone?.release()
+            readyTone = null
+            handler.removeCallbacksAndMessages(null)
+            if (status.startsWith("Enabled") || status.startsWith("Listening")) status = "Voice commands are off."
+        }
         stopForeground(STOP_FOREGROUND_REMOVE)
+        Log.i(TAG, "Microphone foreground mode stopped")
         super.onDestroy()
     }
 }

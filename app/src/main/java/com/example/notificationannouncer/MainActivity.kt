@@ -43,11 +43,21 @@ class MainActivity : AppCompatActivity() {
         binding.btnGrantPermission.setOnClickListener {
             startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
         }
+        binding.btnTestMicrophone.setOnClickListener {
+            if (!NotificationAnnouncerService.handlingMessage) {
+                VoiceCommandService.instance?.listenForReadIt {
+                    if (resumed) updateStatus()
+                }
+            }
+        }
         binding.btnVoiceCommands.setOnClickListener {
             voiceError = null
             if (VoiceCommandService.instance != null) {
+                VoiceCommandService.setWanted(this, false)
+                startWhenResumed = false
                 stopService(Intent(this, VoiceCommandService::class.java))
             } else {
+                VoiceCommandService.setWanted(this, true)
                 val needed = mutableListOf<String>()
                 if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
                     needed.add(Manifest.permission.RECORD_AUDIO)
@@ -63,6 +73,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun startVoiceCommands() {
+        if (voiceStartPending || VoiceCommandService.instance != null) return
         if (!resumed) {
             startWhenResumed = true
             return
@@ -79,7 +90,9 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         resumed = true
-        if (startWhenResumed) {
+        val shouldRestore = VoiceCommandService.wanted(this) &&
+            checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+        if (startWhenResumed || shouldRestore) {
             startWhenResumed = false
             startVoiceCommands()
         }
@@ -128,7 +141,9 @@ class MainActivity : AppCompatActivity() {
         binding.btnVoiceCommands.setText(
             if (voiceEnabled) R.string.disable_voice_commands else R.string.enable_voice_commands)
         binding.btnVoiceCommands.isEnabled = !voiceStartPending
+        binding.btnTestMicrophone.isEnabled = voiceEnabled && !voiceStartPending &&
+            VoiceCommandService.instance?.isListening != true && !NotificationAnnouncerService.handlingMessage
         binding.tvVoiceStatus.text = voiceError ?: if (voiceStartPending)
-            "Starting voice commandsâ€¦" else VoiceCommandService.status
+            "Starting voice commands..." else VoiceCommandService.status
     }
 }

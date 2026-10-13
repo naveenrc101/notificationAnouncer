@@ -9,6 +9,7 @@ import android.service.notification.StatusBarNotification
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import android.util.Log
+import androidx.core.app.NotificationCompat
 import java.util.ArrayDeque
 import java.util.Locale
 
@@ -18,6 +19,11 @@ class NotificationAnnouncerService : NotificationListenerService() {
     private val announcements = AnnouncementQueue()
     private var destroyed = false
     private var busy = false
+        set(value) {
+            field = value
+            handlingMessage = value
+        }
+    private val retryPending = Runnable { flushPending() }
     private var interaction = 0
     private var utteranceId: String? = null
     private var afterSpeech: (() -> Unit)? = null
@@ -26,15 +32,13 @@ class NotificationAnnouncerService : NotificationListenerService() {
 
     companion object {
         private const val TAG = "NotifAnnouncer"
+        var handlingMessage = false
+            private set
         @Volatile var connected = false
             private set
         @Volatile var speechState = SpeechState.STARTING
             private set
-        private val ALLOWED_PACKAGES = setOf(
-            "com.whatsapp", "com.whatsapp.w4b", "com.android.mms",
-            "com.google.android.apps.messaging", "com.samsung.android.messaging",
-            "com.android.messaging", "com.verizon.messaging.vzmsgs", "com.att.messages"
-        )
+
     }
 
     enum class SpeechState { STARTING, READY, ERROR }
@@ -101,10 +105,22 @@ class NotificationAnnouncerService : NotificationListenerService() {
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
-        if (sbn.packageName !in ALLOWED_PACKAGES || sbn.isOngoing) return
         val notification = sbn.notification
-        if (notification.flags and Notification.FLAG_GROUP_SUMMARY != 0) return
         val extras = notification.extras
+        // A summary bundles notifications; it is not the same as a group chat.
+        // Use the explicit conversation flag. Missing metadata is not proof of
+        // an individual chat, so skip it instead of guessing from a sender/title.
+        val groupConversation = if (extras.containsKey(NotificationCompat.EXTRA_IS_GROUP_CONVERSATION)) {
+            extras.getBoolean(NotificationCompat.EXTRA_IS_GROUP_CONVERSATION)
+        } else null
+        if (!WhatsAppNotificationFilter.shouldAnnounce(
+                packageName = sbn.packageName,
+                ongoing = sbn.isOngoing,
+                summary = notification.flags and Notification.FLAG_GROUP_SUMMARY != 0,
+                messageNotification = notification.category == Notification.CATEGORY_MESSAGE ||
+                    extras.containsKey(Notification.EXTRA_MESSAGES),
+                groupConversation = groupConversation
+            )) return
         // MessagingStyle provides the newest message and sender without reading
         // a whole expanded conversation when the user says "read it".
         val messages = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -120,7 +136,7 @@ class NotificationAnnouncerService : NotificationListenerService() {
             ?: bigText?.takeIf { it.isNotEmpty() } ?: text
         if (title.isEmpty() && message.isEmpty()) return
         val sender = title.ifEmpty { "an unknown sender" }
-        val announcement = "Mr. Naveen, you have a message from " + sender + "."
+        val announcement = "Mister Naveen, you have a message from " + sender + "."
         val identity = title.length.toString() + ":" + title + message +
             (latest?.timestamp?.let { ":" + it } ?: "")
         announcements.offer(sbn.key, announcement, identity, message)
@@ -129,13 +145,21 @@ class NotificationAnnouncerService : NotificationListenerService() {
 
     private fun flushPending() {
         if (destroyed || !connected || speechState != SpeechState.READY || busy) return
+        // A user-initiated microphone test must finish before any TTS starts.
+        if (VoiceCommandService.instance?.isListening == true) {
+            handler.removeCallbacks(retryPending)
+            handler.postDelayed(retryPending, 200)
+            return
+        }
         announcements.drainOne { announcement, message ->
             busy = true
             val session = ++interaction
             speakText(announcement) {
                 if (session == interaction && !destroyed && connected) {
                     val voice = VoiceCommandService.instance
+                    Log.i(TAG, "Announcement finished; voice mode available=" + (voice != null))
                     if (voice == null) {
+                        VoiceCommandService.reportNotRunning()
                         finishInteraction()
                     } else {
                         voice.listenForReadIt { read ->
@@ -196,6 +220,7 @@ class NotificationAnnouncerService : NotificationListenerService() {
         afterSpeech = null
         speechChunks.clear()
         handler.removeCallbacks(speechTimeout)
+        handler.removeCallbacks(retryPending)
         VoiceCommandService.instance?.cancelListening()
         tts?.stop()
     }

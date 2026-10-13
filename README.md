@@ -1,13 +1,13 @@
 # Notification Announcer
 
-An Android app that listens for incoming notifications from WhatsApp and SMS apps and announces them aloud using the device's built-in Text-to-Speech engine.
+An Android app that announces individual WhatsApp and WhatsApp Business messages using the device's built-in Text-to-Speech engine. Group chats and SMS apps are excluded.
 
 ---
 
 ## Features
 
 - Announces **WhatsApp** and **WhatsApp Business** messages
-- Announces **SMS / Direct Messages** from major messaging apps
+- Announces only individual chats; group chats and SMS apps are excluded
 - Announces the sender; say **read it** in the two-second voice window to hear the message
 - Skips group summary and ongoing notifications to avoid duplicates
 - Simple one-tap permission setup screen
@@ -21,10 +21,6 @@ An Android app that listens for incoming notifications from WhatsApp and SMS app
 |-----|---------|
 | WhatsApp | `com.whatsapp` |
 | WhatsApp Business | `com.whatsapp.w4b` |
-| Google Messages | `com.google.android.apps.messaging` |
-| Samsung Messages | `com.samsung.android.messaging` |
-| AOSP Messaging | `com.android.messaging` |
-| Stock MMS | `com.android.mms` |
 
 ---
 
@@ -129,7 +125,7 @@ Notification arrives
         ↓
 NotificationListenerService.onNotificationPosted()
         ↓
-Filter by package name (WhatsApp / SMS only)
+Filter WhatsApp / WhatsApp Business, then require an explicit individual-chat flag
         ↓
 Skip ongoing & group summary notifications
         ↓
@@ -200,7 +196,7 @@ MIT License — feel free to use and modify.
 
 ## Voice command: read it
 
-The sender announcement is: "Mr. Naveen, you have a message from <name>."
+The sender announcement is: "Mister Naveen, you have a message from <name>."
 To hear the message body, open the app, tap **Enable voice commands**, and grant
 microphone permission. Allow notifications to see the persistent voice-mode
 notification and its **Stop voice commands** action.
@@ -219,12 +215,16 @@ Voice mode must be enabled while the app is visible, because Android restricts
 starting microphone foreground services from the background. Once enabled, it can
 handle notification command windows with the app in the background. It does not
 record continuously. Disable it in the app or use the notification stop action.
-After a reboot, force-stop or service termination, open the app to enable it again.
+After a reboot, force-stop or service termination, reopen the app: previously enabled voice mode resumes. An explicit Disable or Stop stays disabled.
 
-On-device speech recognition is preferred. If unavailable, the system recognizer
-is used with an offline preference; that provider may still process audio online.
-English (India) recognition must be available. Recognition/microphone errors are
-shown below the voice-mode button.
+The system speech recognizer chooses its normal engine; offline-only mode and a
+fixed English (India) model are no longer forced. The device English locale is
+used, or English (US) when the device language is not English. The provider may
+process audio online. Wait for the short beep indicating microphone readiness.
+Use **Test microphone** to try the same two-second window without a notification.
+The result or an actionable error remains visible below the voice-mode button.
+The microphone still closes after two seconds; the recognizer gets up to eight
+more seconds to return its final result without extending recording.
 
 Validation on a phone:
 1. Enable notification access and voice commands; grant microphone access.
@@ -234,3 +234,13 @@ Validation on a phone:
    read only the message belonging to its preceding announcement.
 5. Repeat with the app backgrounded and the screen locked; try disabling voice
    mode and denying microphone access. The app should remain usable without mic access.
+
+### Individual WhatsApp chats only
+
+Announcements and the read-it microphone window apply only to individual
+WhatsApp and WhatsApp Business messages. Group chat messages, notification
+summaries, ongoing notifications, SMS and other apps are excluded before queuing.
+The filter uses the notification conversation-group flag, not the notification
+bundle/group key, because individual chats can also be bundled by Android.
+If WhatsApp omits the conversation-type metadata, the notification is skipped
+rather than risking a group announcement.
