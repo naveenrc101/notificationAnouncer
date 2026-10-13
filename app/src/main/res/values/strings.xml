@@ -13,4 +13,13 @@
     <string name="sms_label">SMS / Direct Messages</string>
     <string name="label_on">ON</string>
     <string name="info_text">Notifications are announced using your device\'s text-to-speech engine. Ensure your media volume is turned up and TTS is configured in device settings.</string>
+    <string name="status_connecting">Connecting</string>
+    <string name="status_connecting_detail">Access is granted; waiting for Android to connect the listener.</string>
+    <string name="status_starting">Starting speech</string>
+    <string name="status_starting_detail">Notifications are queued while text-to-speech starts.</string>
+    <string name="status_tts_error">Speech unavailable</string>
+    <string name="status_tts_error_detail">Check your device text-to-speech settings, then turn notification access off and on to retry.</string>
+    <string name="enable_voice_commands">Enable voice commands</string>
+    <string name="disable_voice_commands">Disable voice commands</string>
+    <string name="voice_commands_help">After the sender announcement, say "read it" during the two-second microphone window to hear that message. Voice mode stays enabled with a notification; the mic opens only for command windows. On-device recognition is preferred. Otherwise your system speech provider may process audio online. Re-enable voice mode after restarting the phone or stopping the app.</string>
 </resources>

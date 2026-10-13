@@ -8,7 +8,7 @@ An Android app that listens for incoming notifications from WhatsApp and SMS app
 
 - Announces **WhatsApp** and **WhatsApp Business** messages
 - Announces **SMS / Direct Messages** from major messaging apps
-- Speaks the sender's name followed by the message content
+- Announces the sender; say **read it** in the two-second voice window to hear the message
 - Skips group summary and ongoing notifications to avoid duplicates
 - Simple one-tap permission setup screen
 - Works in the background — no need to keep the app open
@@ -135,7 +135,7 @@ Skip ongoing & group summary notifications
         ↓
 Extract: title (sender) + message text
         ↓
-TextToSpeech.speak("WhatsApp. John. Hey, are you there?")
+Announce sender -> listen for "read it" -> optionally speak message
 ```
 
 ---
@@ -163,7 +163,9 @@ app/src/main/
 | Permission | Why |
 |------------|-----|
 | `BIND_NOTIFICATION_LISTENER_SERVICE` | Required to read posted notifications |
-| `POST_NOTIFICATIONS` | Required on Android 13+ |
+| `POST_NOTIFICATIONS` | Shows the voice-mode notification on Android 13+ |
+| `RECORD_AUDIO` | Listens for the read-it command |
+| `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_MICROPHONE` | Keeps user-enabled voice mode available in the background |
 
 No internet, contacts, or storage permissions are used.
 
@@ -195,3 +197,40 @@ No internet, contacts, or storage permissions are used.
 ## License
 
 MIT License — feel free to use and modify.
+
+## Voice command: read it
+
+The sender announcement is: "Mr. Naveen, you have a message from <name>."
+To hear the message body, open the app, tap **Enable voice commands**, and grant
+microphone permission. Allow notifications to see the persistent voice-mode
+notification and its **Stop voice commands** action.
+
+After each announcement finishes, the recognizer opens a microphone window for
+up to **two seconds**, measured from when the recognizer reports it is ready.
+Say **read it** during that window. Only that complete final command triggers
+message playback. Silence, unrelated speech, denied microphone access or a
+recognition error skips playback and advances to the next notification.
+The recognizer may take a little longer to return its result after recording stops.
+New notifications wait until the current announce/listen/read interaction finishes.
+Message text is held only in a bounded in-memory queue; MessagingStyle notifications
+use the latest message when available.
+
+Voice mode must be enabled while the app is visible, because Android restricts
+starting microphone foreground services from the background. Once enabled, it can
+handle notification command windows with the app in the background. It does not
+record continuously. Disable it in the app or use the notification stop action.
+After a reboot, force-stop or service termination, open the app to enable it again.
+
+On-device speech recognition is preferred. If unavailable, the system recognizer
+is used with an offline preference; that provider may still process audio online.
+English (India) recognition must be available. Recognition/microphone errors are
+shown below the voice-mode button.
+
+Validation on a phone:
+1. Enable notification access and voice commands; grant microphone access.
+2. Receive a message, wait for the sender announcement to finish, then say "read it".
+3. Repeat with silence and "do not read it": no message body should be spoken.
+4. Receive messages from two senders in quick succession: each command should
+   read only the message belonging to its preceding announcement.
+5. Repeat with the app backgrounded and the screen locked; try disabling voice
+   mode and denying microphone access. The app should remain usable without mic access.

@@ -2,7 +2,18 @@
   "permissions": {
     "allow": [
       "Bash(git init:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(curl:*)",
+      "Read(//c/Users/NaveenRChigadani/AndroidVoice-Master/**)",
+      "Read(//c/Users/NaveenRChigadani/AndroidVoice-Master/gradle/wrapper/**)",
+      "Bash(gradle --version)",
+      "Bash(where gradle:*)",
+      "Bash(java -version)",
+      "Bash(where java:*)",
+      "Bash(winget --version)",
+      "Bash(winget search:*)",
+      "Bash(~/android-sdk/platform-tools/adb.exe shell:*)"
     ]
   }
 }

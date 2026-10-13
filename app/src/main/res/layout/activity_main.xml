@@ -73,6 +73,28 @@
             app:cornerRadius="10dp"
             android:layout_marginBottom="28dp" />
 
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnVoiceCommands"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/enable_voice_commands"
+            app:cornerRadius="10dp" />
+
+        <TextView
+            android:id="@+id/tvVoiceStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="@color/text_primary"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/voice_commands_help"
+            android:textColor="@color/text_secondary"
+            android:layout_marginBottom="24dp" />
+
         <!-- Monitored Apps Section -->
         <TextView
             android:layout_width="wrap_content"
