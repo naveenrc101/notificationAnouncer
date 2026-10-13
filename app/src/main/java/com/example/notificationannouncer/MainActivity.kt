@@ -127,6 +127,7 @@ class MainActivity : AppCompatActivity() {
             !ready -> R.string.status_starting to R.string.status_starting_detail
             else -> R.string.status_active to R.string.status_active_detail
         }
+        binding.tvInfo.text = getString(R.string.info_text) + "\n\n" + NotificationAnnouncerService.languageStatus
         binding.tvStatus.setText(title)
         binding.tvStatusDetail.setText(detail)
         binding.statusCard.setCardBackgroundColor(getColor(

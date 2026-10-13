@@ -163,7 +163,7 @@ app/src/main/
 | `RECORD_AUDIO` | Listens for the read-it command |
 | `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_MICROPHONE` | Keeps user-enabled voice mode available in the background |
 
-No internet, contacts, or storage permissions are used.
+No contacts or storage access is required. ML Kit may add network permissions for SDK services; message-language identification uses the bundled on-device model. The system speech and TTS providers may use online processing.
 
 ---
 
@@ -244,3 +244,29 @@ The filter uses the notification conversation-group flag, not the notification
 bundle/group key, because individual chats can also be bundled by Android.
 If WhatsApp omits the conversation-type metadata, the notification is skipped
 rather than risking a group announcement.
+
+## Automatic message language
+
+After you say **read it**, the app detects the message language on the device
+using bundled ML Kit language identification, then asks the installed TTS engine
+to speak the original message in that language. No translation is performed.
+The sender greeting, spoken question and **read it** command remain English.
+
+Install the required language voices in your device text-to-speech settings.
+If detection is uncertain, fails or takes more than three seconds, playback
+uses the device language, then English if needed. If the detected voice is
+unavailable, the same fallback applies; the app shows the selected language
+and missing-voice guidance below the information text. Detection does not
+send the message text to a language-detection server. Speech synthesis may
+use a network voice depending on your TTS engine settings.
+
+A single language is selected for each message. Very short messages, mixed
+languages and languages typed using English letters can be misidentified.
+Native-script text gives better results; this does not add a custom voice.
+
+Phone validation: receive an individual WhatsApp message written in Kannada,
+Hindi and English in turn, say **read it**, and check both pronunciation and
+the displayed language. Check a short ambiguous message and a language without
+an installed voice. Queue two different-language messages and confirm each
+greeting returns to English. Disconnect notification access during detection
+and confirm no stale message plays.

@@ -10,11 +10,15 @@ import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import com.google.mlkit.nl.languageid.LanguageIdentification
+import com.google.mlkit.nl.languageid.LanguageIdentifier
 import java.util.ArrayDeque
 import java.util.Locale
 
 class NotificationAnnouncerService : NotificationListenerService() {
     private var tts: TextToSpeech? = null
+    private var languageIdentifier: LanguageIdentifier? = null
+    private var detectionTimeout: Runnable? = null
     private val handler = Handler(Looper.getMainLooper())
     private val announcements = AnnouncementQueue()
     private var destroyed = false
@@ -32,6 +36,8 @@ class NotificationAnnouncerService : NotificationListenerService() {
 
     companion object {
         private const val TAG = "NotifAnnouncer"
+        var languageStatus = "Message language: automatic."
+            private set
         var handlingMessage = false
             private set
         @Volatile var connected = false
@@ -155,6 +161,10 @@ class NotificationAnnouncerService : NotificationListenerService() {
         announcements.drainOne { announcement, message ->
             busy = true
             val session = ++interaction
+            if (!useGreetingLanguage()) {
+                failSpeech()
+                return@drainOne false
+            }
             speakText(announcement) {
                 if (session == interaction && !destroyed && connected) {
                     val voice = VoiceCommandService.instance
@@ -166,9 +176,7 @@ class NotificationAnnouncerService : NotificationListenerService() {
                         voice.listenForReadIt { read ->
                             if (session == interaction && !destroyed && connected) {
                                 if (read) {
-                                    speakText(message.ifBlank { "This notification has no readable message." }) {
-                                        finishInteraction()
-                                    }
+                                    readMessage(message, session)
                                 } else {
                                     finishInteraction()
                                 }
@@ -177,6 +185,60 @@ class NotificationAnnouncerService : NotificationListenerService() {
                     }
                 }
             }
+        }
+    }
+
+    private fun useGreetingLanguage(): Boolean {
+        val engine = tts ?: return false
+        val device = Locale.getDefault()
+        val english = if (device.language == "en") device else Locale.ENGLISH
+        return MessageLanguage.select("en", english) {
+            engine.setLanguage(it) >= TextToSpeech.LANG_AVAILABLE
+        } != null || engine.setLanguage(device) >= TextToSpeech.LANG_AVAILABLE
+    }
+
+    private fun readMessage(message: String, session: Int) {
+        if (message.isBlank()) {
+            speakText("This notification has no readable message.") { finishInteraction() }
+            return
+        }
+        var completed = false
+        fun complete(tag: String?) {
+            if (completed || destroyed || !connected || session != interaction) return
+            completed = true
+            detectionTimeout?.let { handler.removeCallbacks(it) }
+            detectionTimeout = null
+            val engine = tts ?: return
+            val selected = MessageLanguage.select(tag, Locale.getDefault()) {
+                engine.setLanguage(it) >= TextToSpeech.LANG_AVAILABLE
+            }
+            if (selected == null) {
+                failSpeech()
+                return
+            }
+            languageStatus = when {
+                tag == null || tag == "und" ->
+                    "Language uncertain; reading in " + selected.displayLanguage + "."
+                selected.language != Locale.forLanguageTag(tag).language ->
+                    "Voice unavailable for " + Locale.forLanguageTag(tag).displayLanguage +
+                        "; using " + selected.displayLanguage + ". Install the voice in device text-to-speech settings."
+                else -> "Reading messages in " + selected.displayLanguage + "."
+            }
+            speakText(message) { finishInteraction() }
+        }
+        languageStatus = "Detecting message language..."
+        val timeout = Runnable { complete(null) }
+        detectionTimeout = timeout
+        handler.postDelayed(timeout, 3_000L)
+        try {
+            val identifier = languageIdentifier ?: LanguageIdentification.getClient().also {
+                languageIdentifier = it
+            }
+            identifier.identifyLanguage(message)
+                .addOnSuccessListener { complete(it) }
+                .addOnFailureListener { complete(null) }
+        } catch (error: RuntimeException) {
+            complete(null)
         }
     }
 
@@ -216,6 +278,8 @@ class NotificationAnnouncerService : NotificationListenerService() {
 
     private fun cancelInteraction() {
         ++interaction
+        detectionTimeout?.let { handler.removeCallbacks(it) }
+        detectionTimeout = null
         busy = false
         utteranceId = null
         afterSpeech = null
@@ -233,6 +297,8 @@ class NotificationAnnouncerService : NotificationListenerService() {
         speechState = SpeechState.STARTING
         handler.removeCallbacksAndMessages(null)
         announcements.clear()
+        languageIdentifier?.close()
+        languageIdentifier = null
         tts?.shutdown()
         tts = null
         super.onDestroy()
