@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Notification Announcer</string>
+    <string name="app_subtitle">Speaks your WhatsApp and SMS notifications aloud</string>
+    <string name="status_active">Listening</string>
+    <string name="status_active_detail">Announcements are enabled</string>
+    <string name="status_inactive">Not Active</string>
+    <string name="status_inactive_detail">Grant notification access to enable announcements</string>
+    <string name="grant_permission">Grant Notification Access</string>
+    <string name="permission_granted">Notification Access Granted</string>
+    <string name="monitored_apps">Monitored Apps</string>
+    <string name="whatsapp_label">WhatsApp &amp; WhatsApp Business</string>
+    <string name="sms_label">SMS / Direct Messages</string>
+    <string name="label_on">ON</string>
+    <string name="info_text">Notifications are announced using your device\'s text-to-speech engine. Ensure your media volume is turned up and TTS is configured in device settings.</string>
+</resources>
