@@ -196,12 +196,12 @@ MIT License — feel free to use and modify.
 
 ## Voice command: read it
 
-The sender announcement is: "Mister Naveen, you have a message from <name>."
+The sender announcement is: "Mister Naveen, you have a message from <name>. Would you like me to read it?"
 To hear the message body, open the app, tap **Enable voice commands**, and grant
 microphone permission. Allow notifications to see the persistent voice-mode
 notification and its **Stop voice commands** action.
 
-After each announcement finishes, the recognizer opens a microphone window for
+After the announcement and spoken question finish, the recognizer opens a microphone window for
 up to **two seconds**, measured from when the recognizer reports it is ready.
 Say **read it** during that window. Only that complete final command triggers
 message playback. Silence, unrelated speech, denied microphone access or a
