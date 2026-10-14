@@ -1,17 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Notification Announcer</string>
-    <string name="app_subtitle">Announces individual WhatsApp messages</string>
-    <string name="status_active">Listening</string>
+    <string name="app_eyebrow">Notification Announcer</string>
+    <string name="home_title">Stay in the loop.</string>
+    <string name="app_subtitle">Your WhatsApp messages, spoken when they arrive.</string>
+    <string name="announcement_status">Announcement status</string>
+    <string name="your_messages">Your messages</string>
+    <string name="voice_controls">Voice controls</string>
+    <string name="voice_intro">Want the full message? Turn on voice commands and ask to hear it without touching your phone.</string>
+    <string name="about_playback">Good to know</string>
+    <string name="status_active">Ready to announce</string>
     <string name="status_active_detail">Announcements are enabled</string>
-    <string name="status_inactive">Not Active</string>
+    <string name="status_inactive">Needs access</string>
     <string name="status_inactive_detail">Grant notification access to enable announcements</string>
     <string name="grant_permission">Grant Notification Access</string>
-    <string name="permission_granted">Notification Access Granted</string>
+    <string name="permission_granted">Manage notification access</string>
     <string name="monitored_apps">Monitored Apps</string>
     <string name="whatsapp_label">WhatsApp &amp; WhatsApp Business</string>
     <string name="label_on">ON</string>
-    <string name="info_text">Notifications are announced using your device\'s text-to-speech engine. Ensure your media volume is turned up and TTS is configured in device settings.</string>
+    <string name="info_text">Uses your device\'s text-to-speech voice. Turn up media volume and set up a voice in device settings.</string>
     <string name="status_connecting">Connecting</string>
     <string name="status_connecting_detail">Access is granted; waiting for Android to connect the listener.</string>
     <string name="status_starting">Starting speech</string>
@@ -20,7 +27,11 @@
     <string name="status_tts_error_detail">Check your device text-to-speech settings, then turn notification access off and on to retry.</string>
     <string name="enable_voice_commands">Enable voice commands</string>
     <string name="disable_voice_commands">Disable voice commands</string>
-    <string name="voice_commands_help">After the sender announcement, wait for the ready beep, then say read it during the two-second microphone window. Use Test microphone to check recognition without waiting for a message. Voice mode resumes when you reopen the app unless you disabled it. Your system speech provider may process audio online.</string>
+    <string name="voice_commands_help">After the greeting, wait for the beep and say read it within four seconds. Voice mode resumes when you reopen the app unless you turn it off. Your speech provider may process audio online.</string>
     <string name="test_microphone">Test microphone</string>
-    <string name="individual_chats_only">Individual chats only; groups and SMS are excluded</string>
+    <string name="whatsapp_chat_description">Choose the conversations you want to hear.</string>
+    <string name="individual_chats">Individual chats</string>
+    <string name="individual_chats_hint">Always announced</string>
+    <string name="group_chats_hint">Off by default. WhatsApp groups only; SMS stays excluded.</string>
+    <string name="announce_group_notifications">Group chats</string>
 </resources>

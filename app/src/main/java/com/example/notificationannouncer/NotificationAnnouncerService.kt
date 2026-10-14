@@ -114,8 +114,8 @@ class NotificationAnnouncerService : NotificationListenerService() {
         val notification = sbn.notification
         val extras = notification.extras
         // A summary bundles notifications; it is not the same as a group chat.
-        // Use the explicit conversation flag. Missing metadata is not proof of
-        // an individual chat, so skip it instead of guessing from a sender/title.
+        // Use the explicit conversation flag. Missing metadata is not proof of a
+        // conversation type, so skip it instead of guessing from a sender/title.
         val groupConversation = if (extras.containsKey(NotificationCompat.EXTRA_IS_GROUP_CONVERSATION)) {
             extras.getBoolean(NotificationCompat.EXTRA_IS_GROUP_CONVERSATION)
         } else null
@@ -125,7 +125,8 @@ class NotificationAnnouncerService : NotificationListenerService() {
                 summary = notification.flags and Notification.FLAG_GROUP_SUMMARY != 0,
                 messageNotification = notification.category == Notification.CATEGORY_MESSAGE ||
                     extras.containsKey(Notification.EXTRA_MESSAGES),
-                groupConversation = groupConversation
+                groupConversation = groupConversation,
+                announceGroups = AnnouncementPreferences.announceGroups(this)
             )) return
         // MessagingStyle provides the newest message and sender without reading
         // a whole expanded conversation when the user says "read it".

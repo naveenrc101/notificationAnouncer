@@ -3,6 +3,7 @@ package com.example.notificationannouncer
 import android.Manifest
 import android.content.ComponentName
 import android.content.Intent
+import android.content.res.ColorStateList
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -42,6 +43,10 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
         binding.btnGrantPermission.setOnClickListener {
             startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+        }
+        binding.switchGroupNotifications.isChecked = AnnouncementPreferences.announceGroups(this)
+        binding.switchGroupNotifications.setOnCheckedChangeListener { _, enabled ->
+            AnnouncementPreferences.setAnnounceGroups(this, enabled)
         }
         binding.btnTestMicrophone.setOnClickListener {
             if (!NotificationAnnouncerService.handlingMessage) {
@@ -130,7 +135,7 @@ class MainActivity : AppCompatActivity() {
         binding.tvInfo.text = getString(R.string.info_text) + "\n\n" + NotificationAnnouncerService.languageStatus
         binding.tvStatus.setText(title)
         binding.tvStatusDetail.setText(detail)
-        binding.statusCard.setCardBackgroundColor(getColor(
+        binding.statusDot.backgroundTintList = ColorStateList.valueOf(getColor(
             if (ready) R.color.status_active else R.color.status_inactive))
         binding.btnGrantPermission.setText(
             if (enabled) R.string.permission_granted else R.string.grant_permission)

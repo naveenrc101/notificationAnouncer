@@ -1,13 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="colorPrimary">#1565C0</color>
-    <color name="colorPrimaryDark">#0D47A1</color>
-    <color name="colorAccent">#2196F3</color>
-    <color name="background">#F0F2F5</color>
-    <color name="text_primary">#1A1A2E</color>
-    <color name="text_secondary">#6B7280</color>
-    <color name="status_active">#1B5E20</color>
-    <color name="status_inactive">#B71C1C</color>
-    <color name="info_background">#E3F2FD</color>
-    <color name="info_text">#0D47A1</color>
+    <color name="colorPrimary">#66E2C1</color>
+    <color name="colorPrimaryDark">#0B121B</color>
+    <color name="colorAccent">#66E2C1</color>
+    <color name="accent">#66E2C1</color>
+    <color name="background">#0B121B</color>
+    <color name="card_surface">#15202D</color>
+    <color name="card_stroke">#2A3A49</color>
+    <color name="text_primary">#F3F7F8</color>
+    <color name="text_secondary">#B1C2CA</color>
+    <color name="status_active">#66E2C1</color>
+    <color name="status_inactive">#FFB781</color>
+    <color name="info_background">#15202D</color>
+    <color name="info_text">#B1C2CA</color>
 </resources>

@@ -202,7 +202,7 @@ microphone permission. Allow notifications to see the persistent voice-mode
 notification and its **Stop voice commands** action.
 
 After the announcement and spoken question finish, the recognizer opens a microphone window for
-up to **two seconds**, measured from when the recognizer reports it is ready.
+up to **four seconds**, measured from when the recognizer reports it is ready.
 Say **read it** during that window. Only that complete final command triggers
 message playback. Silence, unrelated speech, denied microphone access or a
 recognition error skips playback and advances to the next notification.
@@ -221,9 +221,9 @@ The system speech recognizer chooses its normal engine; offline-only mode and a
 fixed English (India) model are no longer forced. The device English locale is
 used, or English (US) when the device language is not English. The provider may
 process audio online. Wait for the short beep indicating microphone readiness.
-Use **Test microphone** to try the same two-second window without a notification.
+Use **Test microphone** to try the same four-second window without a notification.
 The result or an actionable error remains visible below the voice-mode button.
-The microphone still closes after two seconds; the recognizer gets up to eight
+The microphone still closes after four seconds; the recognizer gets up to eight
 more seconds to return its final result without extending recording.
 
 Validation on a phone:

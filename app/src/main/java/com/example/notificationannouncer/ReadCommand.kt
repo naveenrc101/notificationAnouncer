@@ -3,7 +3,7 @@ package com.example.notificationannouncer
 import java.util.Locale
 
 internal object ReadCommand {
-    const val LISTEN_MILLIS = 2_000L
+    const val LISTEN_MILLIS = 4_000L
     const val STARTUP_TIMEOUT_MILLIS = 10_000L
     const val RESULT_TIMEOUT_MILLIS = 8_000L
 

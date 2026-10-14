@@ -164,7 +164,7 @@ class VoiceCommandService : Service() {
                     if (session != generation || ready) return
                     ready = true
                     handler.removeCallbacksAndMessages(null)
-                    showStatus("Listening now: say read it within two seconds.")
+                    showStatus("Listening now: say read it within four seconds.")
                     Log.i(TAG, "Microphone ready for session " + session)
                     runCatching {
                         readyTone = ToneGenerator(AudioManager.STREAM_MUSIC, 60)
