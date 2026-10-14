@@ -1,14 +1,14 @@
-# Notification Announcer
+# VaaniPing
 
-An Android app that announces individual WhatsApp and WhatsApp Business messages using the device's built-in Text-to-Speech engine. Group chats and SMS apps are excluded.
+An Android app that announces WhatsApp and WhatsApp Business messages using the device's text-to-speech engine. Group chats can be enabled in the app; SMS apps are excluded.
 
 ---
 
 ## Features
 
 - Announces **WhatsApp** and **WhatsApp Business** messages
-- Announces only individual chats; group chats and SMS apps are excluded
-- Announces the sender; say **read it** in the two-second voice window to hear the message
+- Announces individual chats by default; group chats are optional and SMS apps are excluded
+- Announces the sender; say **read it** in the four-second voice window to hear the message
 - Skips group summary and ongoing notifications to avoid duplicates
 - Simple one-tap permission setup screen
 - Works in the background — no need to keep the app open
@@ -83,11 +83,11 @@ The app requires **Notification Access** (a special system permission) to read n
 
 ### Standard path (Android 8–13)
 
-Settings → Apps → ⋮ → **Special app access** → **Notification access** → Notification Announcer → ON → Allow
+Settings → Apps → ⋮ → **Special app access** → **Notification access** → VaaniPing → ON → Allow
 
 ### Google Pixel (Android 14+)
 
-Settings → search **`notification access`** → Notification access → Notification Announcer → ON
+Settings → search **`notification access`** → Notification access → VaaniPing → ON
 
 ### Via ADB (Android 16 / if option not visible in UI)
 

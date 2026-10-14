@@ -3,6 +3,7 @@
     <color name="colorPrimary">#66E2C1</color>
     <color name="colorPrimaryDark">#0B121B</color>
     <color name="colorAccent">#66E2C1</color>
+    <color name="icon_background">#0B121B</color>
     <color name="accent">#66E2C1</color>
     <color name="background">#0B121B</color>
     <color name="card_surface">#15202D</color>

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Notification Announcer</string>
-    <string name="app_eyebrow">Notification Announcer</string>
+    <string name="app_name">VaaniPing</string>
+    <string name="app_eyebrow">VaaniPing</string>
     <string name="home_title">Stay in the loop.</string>
     <string name="app_subtitle">Your WhatsApp messages, spoken when they arrive.</string>
     <string name="announcement_status">Announcement status</string>
