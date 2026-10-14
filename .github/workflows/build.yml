@@ -47,14 +47,15 @@ jobs:
             exit 1
           fi
           umask 077
-          mkdir -p "$HOME/.android"
-          printf '%s' "$VAANIPING_DEBUG_KEYSTORE_B64" | base64 --decode > "$HOME/.android/debug.keystore"
-          actual="$(keytool -list -v -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey | sed -n 's/.*SHA256: //p' | tr -d ':' | tr '[:upper:]' '[:lower:]')"
+          signing_key="$RUNNER_TEMP/vaaniping-debug.keystore"
+          printf '%s' "$VAANIPING_DEBUG_KEYSTORE_B64" | base64 --decode > "$signing_key"
+          actual="$(keytool -list -v -keystore "$signing_key" -storepass android -alias androiddebugkey | sed -n 's/.*SHA256: //p' | tr -d ':' | tr '[:upper:]' '[:lower:]')"
           expected="eeb7cca720e59383206842d1d01d225350c0513e1a7fbdd47fc761b9cede1e39"
           if [ "$actual" != "$expected" ]; then
             echo "VaaniPing signing certificate does not match the established key"
             exit 1
           fi
+          echo "VAANIPING_SIGNING_KEYSTORE=$signing_key" >> "$GITHUB_ENV"
 
       - name: Build Debug APK
         run: gradle testDebugUnitTest assembleDebug

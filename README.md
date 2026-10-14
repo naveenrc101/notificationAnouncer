@@ -65,7 +65,7 @@ File → Open → select the folder → Run ▶
 
 ## Installing updates
 
-VaaniPing keeps the same Android package ID. From version 1.1 onward, each
+VaaniPing keeps the same Android package ID. From version 1.1.1 onward, each
 distributed APK must be signed with the same key and have a higher version code.
 Open the new APK on the phone and choose **Update**. An in-place update normally
 keeps app data and notification access. Android may still ask your file manager
