@@ -42,5 +42,17 @@
     <string name="voice_recommended">Recommended British English</string>
     <string name="choose_english_voice">Choose voice</string>
     <string name="preview_voice">Preview voice</string>
-    <string name="voice_preview_text">Mister Naveen, you have a message. Would you like me to read it?</string>
+    <string name="address_title">What should VaaniPing call you?</string>
+    <string name="address_hint">Add a name and choose a title for personal greetings. You can also continue without a name.</string>
+    <string name="name_hint">Your name</string>
+    <string name="title_hint">Choose a title</string>
+    <string name="title_mr">Mr</string>
+    <string name="title_mrs">Mrs</string>
+    <string name="title_ms">Ms</string>
+    <string name="name_required">Enter a name to save a personal greeting.</string>
+    <string name="title_required">Choose Mr, Mrs, or Ms.</string>
+    <string name="save_address">Save greeting</string>
+    <string name="use_without_name">Use without a name</string>
+    <string name="sample_sender">Alex</string>
+    <string name="greeting_preview">Preview: %1$s</string>
 </resources>

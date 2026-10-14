@@ -12,6 +12,7 @@ import android.os.Looper
 import android.provider.Settings
 import android.speech.tts.TextToSpeech
 import android.speech.tts.Voice
+import android.view.View
 import androidx.appcompat.app.AlertDialog
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -46,6 +47,39 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        val savedAddress = AnnouncementPreferences.address(this)
+        binding.etPreferredName.setText(savedAddress?.name.orEmpty())
+        when (savedAddress?.title) {
+            Honorific.MR -> binding.titleGroup.check(R.id.rbMr)
+            Honorific.MRS -> binding.titleGroup.check(R.id.rbMrs)
+            Honorific.MS -> binding.titleGroup.check(R.id.rbMs)
+            null -> binding.titleGroup.clearCheck()
+        }
+        updateGreetingPreview()
+        binding.btnSaveAddress.setOnClickListener {
+            val name = GreetingText.cleanedName(binding.etPreferredName.text?.toString().orEmpty())
+            val title = when (binding.titleGroup.checkedRadioButtonId) {
+                R.id.rbMr -> Honorific.MR
+                R.id.rbMrs -> Honorific.MRS
+                R.id.rbMs -> Honorific.MS
+                else -> null
+            }
+            binding.nameInputLayout.error =
+                if (name.isBlank()) getString(R.string.name_required) else null
+            binding.tvTitleError.visibility = if (title == null) View.VISIBLE else View.GONE
+            if (name.isBlank() || title == null) return@setOnClickListener
+            AnnouncementPreferences.setAddress(this, GreetingAddress(title, name))
+            binding.etPreferredName.setText(name)
+            updateGreetingPreview()
+        }
+        binding.btnClearAddress.setOnClickListener {
+            AnnouncementPreferences.setAddress(this, null)
+            binding.etPreferredName.text?.clear()
+            binding.titleGroup.clearCheck()
+            binding.nameInputLayout.error = null
+            binding.tvTitleError.visibility = View.GONE
+            updateGreetingPreview()
+        }
         binding.btnGrantPermission.setOnClickListener {
             startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
         }
@@ -107,6 +141,13 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun updateGreetingPreview() {
+        binding.tvGreetingPreview.text = getString(
+            R.string.greeting_preview,
+            GreetingText.announcement(AnnouncementPreferences.address(this), getString(R.string.sample_sender))
+        )
+    }
+
     private fun loadEnglishVoices() {
         val engine = previewTts ?: return
         englishVoices = EnglishVoice.available(engine)
@@ -129,8 +170,10 @@ class MainActivity : AppCompatActivity() {
         if (NotificationAnnouncerService.handlingMessage) return
         val engine = previewTts ?: return
         if (EnglishVoice.apply(this, engine)) {
-            engine.speak(getString(R.string.voice_preview_text),
-                TextToSpeech.QUEUE_FLUSH, null, "voice_preview")
+            engine.speak(
+                GreetingText.announcement(AnnouncementPreferences.address(this), getString(R.string.sample_sender)),
+                TextToSpeech.QUEUE_FLUSH, null, "voice_preview"
+            )
         }
     }
 

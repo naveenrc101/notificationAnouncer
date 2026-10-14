@@ -143,8 +143,7 @@ class NotificationAnnouncerService : NotificationListenerService() {
             ?: bigText?.takeIf { it.isNotEmpty() } ?: text
         if (title.isEmpty() && message.isEmpty()) return
         val sender = title.ifEmpty { "an unknown sender" }
-        val announcement = "Mister Naveen, you have a message from " + sender +
-            ". Would you like me to read it?"
+        val announcement = GreetingText.announcement(AnnouncementPreferences.address(this), sender)
         val identity = title.length.toString() + ":" + title + message +
             (latest?.timestamp?.let { ":" + it } ?: "")
         announcements.offer(sbn.key, announcement, identity, message)

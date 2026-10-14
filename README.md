@@ -215,7 +215,10 @@ MIT License — feel free to use and modify.
 
 ## Voice command: read it
 
-The sender announcement is: "Mister Naveen, you have a message from <name>. Would you like me to read it?"
+Set your name and choose Mr, Mrs, or Ms in the app to personalize the greeting.
+Saving a personal greeting requires both a name and a title. Without a saved
+name, the announcement starts "You have a message from <sender>." The spoken
+titles are Mister, Missus, and Miz to avoid awkward TTS pauses.
 To hear the message body, open the app, tap **Enable voice commands**, and grant
 microphone permission. Allow notifications to see the persistent voice-mode
 notification and its **Stop voice commands** action.
