@@ -10,6 +10,9 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
+import android.speech.tts.TextToSpeech
+import android.speech.tts.Voice
+import androidx.appcompat.app.AlertDialog
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -23,6 +26,8 @@ class MainActivity : AppCompatActivity() {
     private var voiceStartPending = false
     private var voiceStartTime = 0L
     private var voiceError: String? = null
+    private var previewTts: TextToSpeech? = null
+    private var englishVoices: List<Voice> = emptyList()
     private val permissions = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
         if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
             if (resumed) startVoiceCommands() else startWhenResumed = true
@@ -48,6 +53,31 @@ class MainActivity : AppCompatActivity() {
         binding.switchGroupNotifications.setOnCheckedChangeListener { _, enabled ->
             AnnouncementPreferences.setAnnounceGroups(this, enabled)
         }
+        binding.btnChooseVoice.isEnabled = false
+        binding.btnPreviewVoice.isEnabled = false
+        previewTts = TextToSpeech(this) { status ->
+            handler.post {
+                if (!isFinishing && !isDestroyed) {
+                    if (status == TextToSpeech.SUCCESS) loadEnglishVoices()
+                    else binding.tvSelectedVoice.setText(R.string.voice_unavailable)
+                }
+            }
+        }
+        binding.btnChooseVoice.setOnClickListener {
+            val labels = arrayOf(getString(R.string.voice_recommended)) +
+                englishVoices.map { it.locale.displayName + " · " + it.name }
+            AlertDialog.Builder(this)
+                .setTitle(R.string.choose_english_voice)
+                .setItems(labels) { _, index ->
+                    EnglishVoice.select(
+                        this, if (index == 0) null else englishVoices[index - 1].name
+                    )
+                    updateEnglishVoiceLabel()
+                    previewEnglishVoice()
+                }
+                .show()
+        }
+        binding.btnPreviewVoice.setOnClickListener { previewEnglishVoice() }
         binding.btnTestMicrophone.setOnClickListener {
             if (!NotificationAnnouncerService.handlingMessage) {
                 VoiceCommandService.instance?.listenForReadIt {
@@ -77,6 +107,33 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun loadEnglishVoices() {
+        val engine = previewTts ?: return
+        englishVoices = EnglishVoice.available(engine)
+        binding.btnChooseVoice.isEnabled = englishVoices.isNotEmpty()
+        binding.btnPreviewVoice.isEnabled = englishVoices.isNotEmpty()
+        updateEnglishVoiceLabel()
+    }
+
+    private fun updateEnglishVoiceLabel() {
+        val engine = previewTts ?: return
+        val voice = EnglishVoice.preferred(this, engine)
+        binding.tvSelectedVoice.text = if (voice == null) {
+            getString(R.string.voice_unavailable)
+        } else {
+            getString(R.string.voice_selected, voice.locale.displayName, voice.name)
+        }
+    }
+
+    private fun previewEnglishVoice() {
+        if (NotificationAnnouncerService.handlingMessage) return
+        val engine = previewTts ?: return
+        if (EnglishVoice.apply(this, engine)) {
+            engine.speak(getString(R.string.voice_preview_text),
+                TextToSpeech.QUEUE_FLUSH, null, "voice_preview")
+        }
+    }
+
     private fun startVoiceCommands() {
         if (voiceStartPending || VoiceCommandService.instance != null) return
         if (!resumed) {
@@ -102,6 +159,13 @@ class MainActivity : AppCompatActivity() {
             startVoiceCommands()
         }
         handler.post(refreshStatus)
+    }
+
+    override fun onDestroy() {
+        previewTts?.stop()
+        previewTts?.shutdown()
+        previewTts = null
+        super.onDestroy()
     }
 
     override fun onPause() {

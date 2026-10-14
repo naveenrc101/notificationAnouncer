@@ -193,9 +193,10 @@ class NotificationAnnouncerService : NotificationListenerService() {
         val engine = tts ?: return false
         val device = Locale.getDefault()
         val english = if (device.language == "en") device else Locale.ENGLISH
-        return MessageLanguage.select("en", english) {
-            engine.setLanguage(it) >= TextToSpeech.LANG_AVAILABLE
-        } != null || engine.setLanguage(device) >= TextToSpeech.LANG_AVAILABLE
+        return EnglishVoice.apply(this, engine) ||
+            MessageLanguage.select("en", english) {
+                engine.setLanguage(it) >= TextToSpeech.LANG_AVAILABLE
+            } != null || engine.setLanguage(device) >= TextToSpeech.LANG_AVAILABLE
     }
 
     private fun readMessage(message: String, session: Int) {
@@ -217,6 +218,7 @@ class NotificationAnnouncerService : NotificationListenerService() {
                 failSpeech()
                 return
             }
+            if (selected.language == "en") EnglishVoice.apply(this, engine)
             languageStatus = when {
                 tag == null || tag == "und" ->
                     "Language uncertain; reading in " + selected.displayLanguage + "."

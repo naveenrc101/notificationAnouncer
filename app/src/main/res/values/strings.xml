@@ -18,7 +18,7 @@
     <string name="monitored_apps">Monitored Apps</string>
     <string name="whatsapp_label">WhatsApp &amp; WhatsApp Business</string>
     <string name="label_on">ON</string>
-    <string name="info_text">Uses your device\'s text-to-speech voice. Turn up media volume and set up a voice in device settings.</string>
+    <string name="info_text">Uses a British English voice when available for greetings and English messages. Other languages use your device\'s voice. Set up more voices in device text-to-speech settings.</string>
     <string name="status_connecting">Connecting</string>
     <string name="status_connecting_detail">Access is granted; waiting for Android to connect the listener.</string>
     <string name="status_starting">Starting speech</string>
@@ -34,4 +34,13 @@
     <string name="individual_chats_hint">Always announced</string>
     <string name="group_chats_hint">Off by default. WhatsApp groups only; SMS stays excluded.</string>
     <string name="announce_group_notifications">Group chats</string>
+    <string name="english_voice_title">English voice</string>
+    <string name="english_voice_hint">Starts with an available British English voice. Preview and choose another voice from your phone if you prefer. Other message languages keep their own voices.</string>
+    <string name="voice_loading">Loading voices…</string>
+    <string name="voice_unavailable">No English voice available. Check text-to-speech settings.</string>
+    <string name="voice_selected">%1$s · %2$s</string>
+    <string name="voice_recommended">Recommended British English</string>
+    <string name="choose_english_voice">Choose voice</string>
+    <string name="preview_voice">Preview voice</string>
+    <string name="voice_preview_text">Mister Naveen, you have a message. Would you like me to read it?</string>
 </resources>
