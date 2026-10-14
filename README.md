@@ -63,17 +63,36 @@ File → Open → select the folder → Run ▶
 
 ---
 
-## Installing the APK
+## Installing updates
 
-### Disable Play Protect (required for sideloading)
+VaaniPing keeps the same Android package ID. From version 1.1 onward, each
+distributed APK must be signed with the same key and have a higher version code.
+Open the new APK on the phone and choose **Update**. An in-place update normally
+keeps app data and notification access. Android may still ask your file manager
+for permission to install APKs; the app cannot skip that phone security prompt.
 
-1. Open **Google Play Store** → profile picture → **Play Protect**
-2. Tap ⚙️ → toggle **"Scan apps with Play Protect"** OFF
-3. Install the APK, then re-enable Play Protect
+For a connected phone, you can install an update from a computer with:
 
-### Enable Unknown Sources
+~~~powershell
+adb install -r app/build/outputs/apk/debug/app-debug.apk
+~~~
 
-Settings → Apps → Special app access → Install unknown apps → select your file manager → Allow
+The local debug APK uses the persistent
+%USERPROFILE%\.android\debug.keystore key. Keep this file backed up and private.
+The GitHub Actions build uses that same key only after the
+VAANIPING_DEBUG_KEYSTORE_B64 repository secret has been configured. It will
+refuse to publish an APK signed with a different key. Set the secret from a
+trusted machine with GitHub CLI:
+
+~~~powershell
+[Convert]::ToBase64String([IO.File]::ReadAllBytes("$env:USERPROFILE\.android\debug.keystore")) |
+    gh secret set VAANIPING_DEBUG_KEYSTORE_B64 --repo naveenrc101/notificationAnouncer
+~~~
+
+Keep the key out of Git. Raise versionCode in app/build.gradle for each
+new release. APKs built by older GitHub Actions runs used a fresh signing key
+each time; one final uninstall may be required when moving from one of those
+builds to this stable-key build.
 
 ---
 

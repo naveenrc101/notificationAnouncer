@@ -35,10 +35,32 @@ jobs:
       - name: Create local.properties
         run: echo "sdk.dir=$ANDROID_HOME" > local.properties
 
+      # Published APKs must keep the same signing certificate across runs.
+      # Store the local .android/debug.keystore as an Actions secret; never commit it.
+      - name: Restore VaaniPing signing key
+        if: github.event_name != 'pull_request'
+        env:
+          VAANIPING_DEBUG_KEYSTORE_B64: ${{ secrets.VAANIPING_DEBUG_KEYSTORE_B64 }}
+        run: |
+          if [ -z "$VAANIPING_DEBUG_KEYSTORE_B64" ]; then
+            echo "Missing VAANIPING_DEBUG_KEYSTORE_B64 repository secret"
+            exit 1
+          fi
+          umask 077
+          mkdir -p "$HOME/.android"
+          printf '%s' "$VAANIPING_DEBUG_KEYSTORE_B64" | base64 --decode > "$HOME/.android/debug.keystore"
+          actual="$(keytool -list -v -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey | sed -n 's/.*SHA256: //p' | tr -d ':' | tr '[:upper:]' '[:lower:]')"
+          expected="eeb7cca720e59383206842d1d01d225350c0513e1a7fbdd47fc761b9cede1e39"
+          if [ "$actual" != "$expected" ]; then
+            echo "VaaniPing signing certificate does not match the established key"
+            exit 1
+          fi
+
       - name: Build Debug APK
         run: gradle testDebugUnitTest assembleDebug
 
       - name: Upload APK artifact
+        if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@v4
         with:
           name: app-debug-${{ github.run_number }}
